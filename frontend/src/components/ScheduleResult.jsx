@@ -6,14 +6,17 @@ const TIME_SLOTS = [
   { key: 'before_bed', label: '취침 전', emoji: '🌙', desc: '자기 30-60분 전', color: '#EDE7F6' },
 ]
 
-export default function ScheduleResult({ result }) {
+export default function ScheduleResult({ result, supplements }) {
   const { schedule, synergies, warnings, tips } = result
 
   const hasAnySchedule = TIME_SLOTS.some((slot) => schedule[slot.key]?.length > 0)
 
   return (
     <div className="result-section">
-      <h2 className="section-title">📋 분석 결과</h2>
+      <div className="result-section-header">
+        <h2>📋 분석 결과</h2>
+        <span className="result-badge">{supplements?.length || 0}개 영양제</span>
+      </div>
 
       {/* Schedule */}
       <div className="result-card">
