@@ -38,31 +38,16 @@ export default function App() {
     setLoading(true)
     setError(null)
     setResult(null)
-    // TODO: 백엔드 연결 시 아래 목업 코드를 제거하고 fetch 블록을 사용하세요
     await new Promise((r) => setTimeout(r, 800))
     setResult(MOCK_RESULT)
     setLoading(false)
-    /* 실제 API 호출 코드 (백엔드 준비 후 활성화)
-    try {
-      const res = await fetch(import.meta.env.VITE_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supplements }),
-      })
-      if (!res.ok) throw new Error(`오류 ${res.status}`)
-      const data = await res.json()
-      setResult(data)
-    } catch (e) {
-      setError('분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
-    } finally {
-      setLoading(false)
-    }
-    */
   }
 
   return (
     <div className="app">
       <header className="app-header">
+        <div className="header-orb header-orb-1" />
+        <div className="header-orb header-orb-2" />
         <div className="header-content">
           <div className="logo-wrapper">
             <div className="logo-icon">⏱️</div>
@@ -70,7 +55,16 @@ export default function App() {
               <span className="logo-nu">Nu</span><span className="logo-timing">timing</span>
             </div>
           </div>
-          <p className="header-tagline">복용 중인 영양제를 입력하면 최적의 타이밍과 조합을 알려드립니다</p>
+          <p className="header-tagline">
+            복용 중인 영양제를 입력하면<br />최적의 타이밍과 조합을 알려드립니다
+          </p>
+          <div className="header-steps">
+            <div className="step"><span className="step-num">1</span> 영양제 선택</div>
+            <span className="step-arrow">›</span>
+            <div className="step"><span className="step-num">2</span> AI 분석</div>
+            <span className="step-arrow">›</span>
+            <div className="step"><span className="step-num">3</span> 스케줄 확인</div>
+          </div>
         </div>
       </header>
 
