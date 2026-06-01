@@ -6,7 +6,7 @@ const TIME_SLOTS = [
   { key: 'before_bed', label: '취침 전', emoji: '🌙', desc: '자기 30-60분 전', color: '#EDE7F6' },
 ]
 
-export default function ScheduleResult({ result, supplements }) {
+export default function ScheduleResult({ result, supplements, onSave, saveStatus }) {
   const { schedule, synergies, warnings, tips } = result
 
   const hasAnySchedule = TIME_SLOTS.some((slot) => schedule[slot.key]?.length > 0)
@@ -16,6 +16,14 @@ export default function ScheduleResult({ result, supplements }) {
       <div className="result-section-header">
         <h2>📋 분석 결과</h2>
         <span className="result-badge">{supplements?.length || 0}개 영양제</span>
+        <button
+          className={`save-btn ${saveStatus === 'saved' ? 'save-btn-saved' : ''}`}
+          onClick={onSave}
+          disabled={saveStatus === 'saving' || saveStatus === 'saved'}
+        >
+          {saveStatus === 'saving' && <span className="save-spinner" />}
+          {saveStatus === 'saved' ? '✓ 저장됨' : saveStatus === 'saving' ? '저장 중...' : '💾 저장하기'}
+        </button>
       </div>
 
       {/* Schedule */}

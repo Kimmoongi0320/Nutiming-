@@ -3,6 +3,7 @@ import { supabase } from './lib/supabase'
 import AuthForm from './components/AuthForm'
 import SupplementInput from './components/SupplementInput'
 import ScheduleResult from './components/ScheduleResult'
+import HistoryModal from './components/HistoryModal'
 
 export default function App() {
   const [session, setSession] = useState(undefined) // undefined = 로딩 중
@@ -10,6 +11,10 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [saveStatus, setSaveStatus] = useState('idle') // idle | saving | saved
+  const [showHistory, setShowHistory] = useState(false)
+  const [history, setHistory] = useState([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -21,6 +26,46 @@ export default function App() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
+  }
+
+  const saveResult = async () => {
+    if (!result || !session) return
+    setSaveStatus('saving')
+    const { error } = await supabase.from('analyses').insert({
+      user_id: session.user.id,
+      supplements,
+      result,
+    })
+    if (error) {
+      setSaveStatus('idle')
+      alert('저장 중 오류가 발생했습니다.')
+    } else {
+      setSaveStatus('saved')
+    }
+  }
+
+  const openHistory = async () => {
+    setShowHistory(true)
+    setHistoryLoading(true)
+    const { data, error } = await supabase
+      .from('analyses')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+    setHistoryLoading(false)
+    if (!error) setHistory(data)
+  }
+
+  const loadHistory = (item) => {
+    setSupplements(item.supplements)
+    setResult(item.result)
+    setSaveStatus('saved')
+    setShowHistory(false)
+  }
+
+  const deleteHistory = async (id) => {
+    await supabase.from('analyses').delete().eq('id', id)
+    setHistory((prev) => prev.filter((item) => item.id !== id))
   }
 
   const analyzeSupplements = async () => {
@@ -37,6 +82,7 @@ export default function App() {
       if (!res.ok) throw new Error(`오류 ${res.status}`)
       const data = await res.json()
       setResult(data)
+      setSaveStatus('idle')
     } catch {
       setError('분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
     } finally {
@@ -75,6 +121,7 @@ export default function App() {
             </div>
             <div className="header-user">
               <span className="header-user-email">{session.user.email}</span>
+              <button className="history-btn" onClick={openHistory}>📂 내 기록</button>
               <button className="signout-btn" onClick={handleSignOut}>로그아웃</button>
             </div>
           </div>
@@ -110,8 +157,25 @@ export default function App() {
         </button>
 
         {error && <div className="error-box">{error}</div>}
-        {result && <ScheduleResult result={result} supplements={supplements} />}
+        {result && (
+          <ScheduleResult
+            result={result}
+            supplements={supplements}
+            onSave={saveResult}
+            saveStatus={saveStatus}
+          />
+        )}
       </main>
+
+      {showHistory && (
+        <HistoryModal
+          history={history}
+          loading={historyLoading}
+          onClose={() => setShowHistory(false)}
+          onLoad={loadHistory}
+          onDelete={deleteHistory}
+        />
+      )}
 
       <footer className="app-footer">
         <p>⚠️ Nutiming은 일반적인 정보 제공 목적이며, 의학적 진단 및 치료를 대체하지 않습니다.</p>
