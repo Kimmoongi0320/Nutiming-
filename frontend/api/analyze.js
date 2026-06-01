@@ -1,7 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
 const SYSTEM_PROMPT = `당신은 영양제 및 건강 보충제 전문가입니다. 사용자가 복용하는 영양제 목록을 받아 최적의 복용 타이밍과 조합을 과학적 근거에 기반하여 분석합니다.
 
 핵심 원칙:
@@ -41,7 +39,7 @@ const SYSTEM_PROMPT = `당신은 영양제 및 건강 보충제 전문가입니�
 - 입력된 모든 영양제는 반드시 schedule의 다섯 슬롯 중 하나 이상에 포함되어야 합니다.
 - 모르는 영양제는 가장 유사한 성분 계열로 분류하세요.`
 
-const RESPONSE_SCHEMA = {
+const TOOL_INPUT_SCHEMA = {
   type: 'object',
   properties: {
     schedule: {
@@ -86,6 +84,37 @@ const RESPONSE_SCHEMA = {
   additionalProperties: false,
 }
 
+function mockResponse(supplements) {
+  const half = Math.ceil(supplements.length / 2)
+  return {
+    _mock: true,
+    schedule: {
+      morning_empty:     supplements.slice(0, 1),
+      morning_with_food: supplements.slice(1, half),
+      afternoon:         [],
+      evening_with_food: supplements.slice(half),
+      before_bed:        [],
+    },
+    synergies: [
+      {
+        supplements: supplements.slice(0, 2),
+        reason: '[테스트 응답] 이 영양제들은 함께 복용하면 시너지 효과가 있습니다.',
+      },
+    ],
+    warnings: [],
+    tips: [
+      '[테스트 응답] API 연결이 없어 임시 데이터를 표시합니다.',
+      '실제 배포 환경에서는 ANTHROPIC_API_KEY 환경변수를 설정하세요.',
+    ],
+  }
+}
+
+function isConnectionError(err) {
+  if (err instanceof Anthropic.APIConnectionError) return true
+  if (err instanceof Anthropic.AuthenticationError) return true
+  return false
+}
+
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') {
     res.status(200).end()
@@ -104,6 +133,14 @@ export default async function handler(req, res) {
     return
   }
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.warn('[테스트 모드] ANTHROPIC_API_KEY 미설정, 목업 응답 반환')
+    res.status(200).json(mockResponse(supplements))
+    return
+  }
+
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
   try {
     const response = await client.messages.create({
       model: 'claude-opus-4-8',
@@ -115,12 +152,14 @@ export default async function handler(req, res) {
           cache_control: { type: 'ephemeral' },
         },
       ],
-      output_config: {
-        format: {
-          type: 'json_schema',
-          schema: RESPONSE_SCHEMA,
+      tools: [
+        {
+          name: 'supplement_schedule',
+          description: '영양제 복용 스케줄 분석 결과를 반환합니다.',
+          input_schema: TOOL_INPUT_SCHEMA,
         },
-      },
+      ],
+      tool_choice: { type: 'tool', name: 'supplement_schedule' },
       messages: [
         {
           role: 'user',
@@ -129,11 +168,16 @@ export default async function handler(req, res) {
       ],
     })
 
-    const textBlock = response.content.find((b) => b.type === 'text')
-    if (!textBlock) throw new Error('Claude 응답에 텍스트 블록이 없습니다.')
+    const toolUse = response.content.find((b) => b.type === 'tool_use')
+    if (!toolUse) throw new Error('Claude 응답에 tool_use 블록이 없습니다.')
 
-    res.status(200).json(JSON.parse(textBlock.text))
+    res.status(200).json(toolUse.input)
   } catch (err) {
+    if (isConnectionError(err)) {
+      console.warn('[테스트 모드] API 연결 불가, 목업 응답 반환:', err.message)
+      res.status(200).json(mockResponse(supplements))
+      return
+    }
     console.error(err)
     res.status(500).json({ error: '분석 중 오류가 발생했습니다.' })
   }
