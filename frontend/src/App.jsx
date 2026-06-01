@@ -63,9 +63,15 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="header-icon">💊</div>
-        <h1>영양제 복용 가이드</h1>
-        <p>복용 중인 영양제를 입력하면 최적의 타이밍과 조합을 알려드립니다</p>
+        <div className="header-content">
+          <div className="logo-wrapper">
+            <div className="logo-icon">⏱️</div>
+            <div className="logo-text">
+              <span className="logo-nu">Nu</span><span className="logo-timing">timing</span>
+            </div>
+          </div>
+          <p className="header-tagline">복용 중인 영양제를 입력하면 최적의 타이밍과 조합을 알려드립니다</p>
+        </div>
       </header>
 
       <main className="app-main">
@@ -91,7 +97,7 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <p>⚠️ 이 서비스는 일반적인 정보 제공 목적이며, 의학적 진단 및 치료를 대체하지 않습니다.</p>
+        <p>⚠️ Nutiming은 일반적인 정보 제공 목적이며, 의학적 진단 및 치료를 대체하지 않습니다.</p>
       </footer>
     </div>
   )
