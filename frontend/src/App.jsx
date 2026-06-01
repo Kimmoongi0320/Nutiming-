@@ -1,12 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from './lib/supabase'
+import AuthForm from './components/AuthForm'
 import SupplementInput from './components/SupplementInput'
 import ScheduleResult from './components/ScheduleResult'
 
 export default function App() {
+  const [session, setSession] = useState(undefined) // undefined = 로딩 중
   const [supplements, setSupplements] = useState([])
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+  }
 
   const MOCK_RESULT = {
     schedule: {
@@ -38,34 +53,56 @@ export default function App() {
     setLoading(true)
     setError(null)
     setResult(null)
-    // TODO: 백엔드 연결 시 아래 목업 코드를 제거하고 fetch 블록을 사용하세요
     await new Promise((r) => setTimeout(r, 800))
     setResult(MOCK_RESULT)
     setLoading(false)
-    /* 실제 API 호출 코드 (백엔드 준비 후 활성화)
-    try {
-      const res = await fetch(import.meta.env.VITE_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supplements }),
-      })
-      if (!res.ok) throw new Error(`오류 ${res.status}`)
-      const data = await res.json()
-      setResult(data)
-    } catch (e) {
-      setError('분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
-    } finally {
-      setLoading(false)
-    }
-    */
   }
 
+  // 세션 로딩 중
+  if (session === undefined) {
+    return (
+      <div className="auth-loading">
+        <div className="auth-loading-logo">
+          <span className="logo-nu">Nu</span><span className="logo-timing">timing</span>
+        </div>
+        <div className="spinner spinner-dark" />
+      </div>
+    )
+  }
+
+  // 미로그인 → 로그인 화면
+  if (!session) return <AuthForm />
+
+  // 로그인 완료 → 메인 앱
   return (
     <div className="app">
       <header className="app-header">
-        <div className="header-icon">💊</div>
-        <h1>영양제 복용 가이드</h1>
-        <p>복용 중인 영양제를 입력하면 최적의 타이밍과 조합을 알려드립니다</p>
+        <div className="header-orb header-orb-1" />
+        <div className="header-orb header-orb-2" />
+        <div className="header-content">
+          <div className="header-top-row">
+            <div className="logo-wrapper">
+              <div className="logo-icon">⏱️</div>
+              <div className="logo-text">
+                <span className="logo-nu">Nu</span><span className="logo-timing">timing</span>
+              </div>
+            </div>
+            <div className="header-user">
+              <span className="header-user-email">{session.user.email}</span>
+              <button className="signout-btn" onClick={handleSignOut}>로그아웃</button>
+            </div>
+          </div>
+          <p className="header-tagline">
+            복용 중인 영양제를 입력하면<br />최적의 타이밍과 조합을 알려드립니다
+          </p>
+          <div className="header-steps">
+            <div className="step"><span className="step-num">1</span> 영양제 선택</div>
+            <span className="step-arrow">›</span>
+            <div className="step"><span className="step-num">2</span> AI 분석</div>
+            <span className="step-arrow">›</span>
+            <div className="step"><span className="step-num">3</span> 스케줄 확인</div>
+          </div>
+        </div>
       </header>
 
       <main className="app-main">
@@ -91,7 +128,7 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <p>⚠️ 이 서비스는 일반적인 정보 제공 목적이며, 의학적 진단 및 치료를 대체하지 않습니다.</p>
+        <p>⚠️ Nutiming은 일반적인 정보 제공 목적이며, 의학적 진단 및 치료를 대체하지 않습니다.</p>
       </footer>
     </div>
   )
