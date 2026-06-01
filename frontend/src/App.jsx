@@ -4,6 +4,8 @@ import AuthForm from './components/AuthForm'
 import SupplementInput from './components/SupplementInput'
 import ScheduleResult from './components/ScheduleResult'
 import HistoryModal from './components/HistoryModal'
+import ChecklistModal from './components/ChecklistModal'
+import CalendarModal from './components/CalendarModal'
 
 export default function App() {
   const [session, setSession] = useState(undefined) // undefined = 로딩 중
@@ -15,6 +17,8 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false)
   const [history, setHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [showChecklist, setShowChecklist] = useState(false)
+  const [showCalendar, setShowCalendar] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -121,6 +125,8 @@ export default function App() {
             </div>
             <div className="header-user">
               <span className="header-user-email">{session.user.email}</span>
+              <button className="history-btn" onClick={() => setShowChecklist(true)}>✅ 오늘 복용</button>
+              <button className="history-btn" onClick={() => setShowCalendar(true)}>📅 달력</button>
               <button className="history-btn" onClick={openHistory}>📂 내 기록</button>
               <button className="signout-btn" onClick={handleSignOut}>로그아웃</button>
             </div>
@@ -174,6 +180,20 @@ export default function App() {
           onClose={() => setShowHistory(false)}
           onLoad={loadHistory}
           onDelete={deleteHistory}
+        />
+      )}
+
+      {showChecklist && (
+        <ChecklistModal
+          session={session}
+          onClose={() => setShowChecklist(false)}
+        />
+      )}
+
+      {showCalendar && (
+        <CalendarModal
+          session={session}
+          onClose={() => setShowCalendar(false)}
         />
       )}
 
