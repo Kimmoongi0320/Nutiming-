@@ -150,11 +150,35 @@ export default async function handler(req, res) {
     res.status(200).json(parsed)
   } catch (err) {
     console.error(err)
-    if (err.message?.includes('API key') || err.message?.includes('permission') || err.status === 401 || err.status === 403) {
-      console.warn('[테스트 모드] API 연결 불가, 목업 응답 반환:', err.message)
-      res.status(200).json(mockResponse(supplements))
+
+    if (err instanceof SyntaxError) {
+      res.status(500).json({ error: 'AI 응답을 파싱하는 중 오류가 발생했습니다. 다시 시도해주세요.' })
       return
     }
-    res.status(500).json({ error: '분석 중 오류가 발생했습니다.' })
+
+    const status = err.status ?? err.httpErrorCode ?? err.code
+    const msg = err.message ?? ''
+
+    if (status === 429 || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED')) {
+      res.status(429).json({ error: 'API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.' })
+      return
+    }
+
+    if (status === 401 || status === 403 || msg.includes('API key') || msg.includes('permission') || msg.includes('PERMISSION_DENIED')) {
+      res.status(500).json({ error: 'API 인증에 실패했습니다. 관리자에게 문의하세요.' })
+      return
+    }
+
+    if (status === 404 || msg.includes('not found') || msg.includes('MODEL_NOT_FOUND')) {
+      res.status(500).json({ error: 'AI 모델을 찾을 수 없습니다. 관리자에게 문의하세요.' })
+      return
+    }
+
+    if (status >= 500 || msg.includes('INTERNAL') || msg.includes('UNAVAILABLE')) {
+      res.status(500).json({ error: 'AI 서버에 일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.' })
+      return
+    }
+
+    res.status(500).json({ error: '분석 중 오류가 발생했습니다. 다시 시도해주세요.' })
   }
 }
