@@ -23,6 +23,18 @@ function calcProgress(checkedItems, schedule) {
   return Math.round((done / allItems.length) * 100)
 }
 
+function getWeekDates() {
+  const today = new Date()
+  const day = today.getDay()
+  const dates = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today)
+    d.setDate(today.getDate() - day + i)
+    dates.push(d.toLocaleDateString('sv-SE'))
+  }
+  return dates
+}
+
 export default function CalendarModal({ session, onClose }) {
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
@@ -87,8 +99,19 @@ export default function CalendarModal({ session, onClose }) {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d)
 
   const todayStr = new Date().toLocaleDateString('sv-SE')
-
   const selectedData = selectedDate ? checksByDate[selectedDate] : null
+
+  const weekDates = getWeekDates()
+  const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
+  const weekStats = weekDates.map((ds) => {
+    const data = checksByDate[ds]
+    const progress = data ? calcProgress(data.checked_items, data.schedule) : -1
+    return { ds, progress }
+  })
+  const daysWithData = weekStats.filter((s) => s.progress >= 0)
+  const weekAvg = daysWithData.length > 0
+    ? Math.round(daysWithData.reduce((sum, s) => sum + s.progress, 0) / daysWithData.length)
+    : null
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -99,6 +122,39 @@ export default function CalendarModal({ session, onClose }) {
         </div>
 
         <div className="modal-body">
+          {/* 이번 주 복용률 */}
+          {!loading && (
+            <div className="week-stats">
+              <div className="week-stats-header">
+                <span className="week-stats-title">이번 주 복용률</span>
+                {weekAvg !== null && (
+                  <span className={`week-stats-avg ${weekAvg >= 80 ? 'week-avg-good' : weekAvg >= 50 ? 'week-avg-mid' : 'week-avg-low'}`}>
+                    평균 {weekAvg}%
+                  </span>
+                )}
+              </div>
+              <div className="week-stats-days">
+                {weekStats.map(({ ds, progress }, i) => {
+                  const isToday = ds === todayStr
+                  return (
+                    <div key={ds} className={`week-day-col ${isToday ? 'week-day-today' : ''}`}>
+                      <div className="week-day-label">{WEEKDAY_LABELS[i]}</div>
+                      <div className="week-day-bar-wrap">
+                        <div
+                          className={`week-day-bar-fill ${progress === 100 ? 'bar-complete' : progress > 0 ? 'bar-partial' : ''}`}
+                          style={{ height: progress > 0 ? `${progress}%` : '0%' }}
+                        />
+                      </div>
+                      <div className="week-day-pct">
+                        {progress < 0 ? '-' : `${progress}%`}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {/* 월 네비게이션 */}
           <div className="calendar-nav">
             <button className="cal-nav-btn" onClick={prevMonth}>‹</button>

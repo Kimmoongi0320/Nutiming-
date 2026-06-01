@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 const TIME_SLOTS = [
   { key: 'morning_empty', label: '아침 공복', emoji: '🌅', desc: '기상 후 30분 이내', color: '#E8F5E9' },
   { key: 'morning_with_food', label: '아침 식사와 함께', emoji: '🍳', desc: '아침 식사 시', color: '#E3F2FD' },
@@ -6,8 +8,31 @@ const TIME_SLOTS = [
   { key: 'before_bed', label: '취침 전', emoji: '🌙', desc: '자기 30-60분 전', color: '#EDE7F6' },
 ]
 
+function buildCopyText(schedule) {
+  const lines = ['[Nutiming 복용 스케줄]']
+  for (const slot of TIME_SLOTS) {
+    const items = schedule[slot.key] || []
+    if (items.length > 0) {
+      lines.push(`${slot.emoji} ${slot.label}: ${items.join(', ')}`)
+    }
+  }
+  return lines.join('\n')
+}
+
 export default function ScheduleResult({ result, supplements, onSave, saveStatus }) {
+  const [copyStatus, setCopyStatus] = useState('idle')
   const { schedule, synergies, warnings, tips } = result
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(buildCopyText(schedule))
+      setCopyStatus('copied')
+      setTimeout(() => setCopyStatus('idle'), 2000)
+    } catch {
+      setCopyStatus('error')
+      setTimeout(() => setCopyStatus('idle'), 2000)
+    }
+  }
 
   const hasAnySchedule = TIME_SLOTS.some((slot) => schedule[slot.key]?.length > 0)
 
@@ -16,14 +41,22 @@ export default function ScheduleResult({ result, supplements, onSave, saveStatus
       <div className="result-section-header">
         <h2>📋 분석 결과</h2>
         <span className="result-badge">{supplements?.length || 0}개 영양제</span>
-        <button
-          className={`save-btn ${saveStatus === 'saved' ? 'save-btn-saved' : ''}`}
-          onClick={onSave}
-          disabled={saveStatus === 'saving' || saveStatus === 'saved'}
-        >
-          {saveStatus === 'saving' && <span className="save-spinner" />}
-          {saveStatus === 'saved' ? '✓ 저장됨' : saveStatus === 'saving' ? '저장 중...' : '💾 저장하기'}
-        </button>
+        <div className="result-header-actions">
+          <button
+            className={`copy-btn ${copyStatus === 'copied' ? 'copy-btn-copied' : copyStatus === 'error' ? 'copy-btn-error' : ''}`}
+            onClick={handleCopy}
+          >
+            {copyStatus === 'copied' ? '✓ 복사됨' : copyStatus === 'error' ? '복사 실패' : '📋 복사'}
+          </button>
+          <button
+            className={`save-btn ${saveStatus === 'saved' ? 'save-btn-saved' : ''}`}
+            onClick={onSave}
+            disabled={saveStatus === 'saving' || saveStatus === 'saved'}
+          >
+            {saveStatus === 'saving' && <span className="save-spinner" />}
+            {saveStatus === 'saved' ? '✓ 저장됨' : saveStatus === 'saving' ? '저장 중...' : '💾 저장하기'}
+          </button>
+        </div>
       </div>
 
       {/* Schedule */}
