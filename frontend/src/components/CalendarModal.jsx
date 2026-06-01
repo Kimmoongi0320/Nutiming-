@@ -53,13 +53,18 @@ export default function CalendarModal({ session, onClose }) {
     const firstDay = dateStr(y, m, 1)
     const lastDay = dateStr(y, m, new Date(y, m + 1, 0).getDate())
 
+    // 이번 주가 월 경계에 걸칠 수 있으므로 주간 날짜도 범위에 포함
+    const weekDates = getWeekDates()
+    const rangeStart = [firstDay, weekDates[0]].sort()[0]
+    const rangeEnd = [lastDay, weekDates[6]].sort().reverse()[0]
+
     const [checksResult, analysisResult] = await Promise.all([
       supabase
         .from('daily_checks')
         .select('date, checked_items')
         .eq('user_id', session.user.id)
-        .gte('date', firstDay)
-        .lte('date', lastDay),
+        .gte('date', rangeStart)
+        .lte('date', rangeEnd),
       supabase
         .from('analyses')
         .select('result, created_at')
